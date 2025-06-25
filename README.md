@@ -1,1 +1,1 @@
-# Quantitative-Analysis-of-Mobile-Applications
+This is the analysis of google play applications in 4 regions done on stata
