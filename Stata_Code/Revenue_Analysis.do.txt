@@ -1,0 +1,148 @@
+*******************************************************
+* MANM526 - Final Project Do File
+* Title: App Store Revenue Analysis
+* Author: [Your Name]
+* Date: [Add Date]
+* Description: This .do file performs descriptive, exploratory,
+* regression, and robustness analyses on app store data.
+*******************************************************
+
+* Load data (update with correct path)
+use "FINAL PROJECT DATA-MANM526 2024-25.dta", clear
+
+*******************************************************
+* VARIABLE TRANSFORMATIONS
+*******************************************************
+gen ln_monthly_revenue = ln(monthly_revenue)
+gen ln_monthly_downloads = ln(monthly_downloads)
+gen ln_active_users = ln(active_users)
+
+*******************************************************
+* DESCRIPTIVE STATISTICS
+*******************************************************
+table country, stat(mean ln_monthly_revenue) stat(mean ln_monthly_downloads) ///
+    stat(mean ln_active_users) stat(sd ln_monthly_revenue) stat(sd ln_monthly_downloads) ///
+    stat(sd ln_active_users) stat(min ln_monthly_revenue) stat(max ln_monthly_revenue)
+
+summarize ln_monthly_revenue ln_monthly_downloads ln_active_users ///
+    updates rank shows_ads in_app_purchases
+
+*******************************************************
+* ONE-WAY ANOVA + BOXPLOTS BY COUNTRY
+*******************************************************
+oneway ln_monthly_downloads country, tabulate
+graph box ln_monthly_downloads, over(country, label(angle(45))) ///
+    title("Distribution of ln(Monthly Downloads) by Country") ///
+    ytitle("ln(Monthly Downloads)")
+
+oneway ln_active_users country, tabulate
+graph box ln_active_users, over(country) ///
+    title("Distribution of ln(Active Users) by Country") ///
+    ytitle("ln(Active Users)")
+
+*******************************************************
+* CORRELATION MATRIX
+*******************************************************
+pwcorr ln_monthly_revenue ln_monthly_downloads ln_active_users ///
+    updates rank shows_ads in_app_purchases, sig
+
+*******************************************************
+* HISTOGRAMS
+*******************************************************
+histogram ln_monthly_revenue, fcolor(dkgreen) normal normopts(lcolor(red))
+histogram ln_monthly_downloads, fcolor(dkgreen) normal normopts(lcolor(red))
+histogram ln_active_users, fcolor(dkgreen) normal normopts(lcolor(red))
+graph box ln_active_users ln_monthly_downloads ln_monthly_revenue
+
+*******************************************************
+* SCATTER PLOTS WITH LINEAR FITS
+*******************************************************
+twoway (scatter ln_monthly_revenue ln_monthly_downloads, mcolor(dkgreen)) ///
+       (lfit ln_monthly_revenue ln_monthly_downloads, lcolor(red)), ///
+       ytitle("Ln(Monthly Revenue)")
+
+twoway (scatter ln_monthly_revenue rank, mcolor(dkgreen)) ///
+       (lfit ln_monthly_revenue rank, lcolor(red)), ///
+       ytitle("Ln(Monthly Revenue)")
+
+twoway (scatter ln_monthly_revenue updates, mcolor(dkgreen)) ///
+       (lfit ln_monthly_revenue updates, lcolor(red)), ///
+       ytitle("Ln(Monthly Revenue)")
+
+*******************************************************
+* CATEGORICAL DISTRIBUTIONS
+*******************************************************
+graph bar, over(shows_ads, label(labcolor("dkgreen"))) ///
+    bar(1, fcolor(dkgreen)) ///
+    title("Distribution of Apps by In-App Ads") ///
+    subtitle("1 = Shows Ads")
+
+*******************************************************
+* ENCODING CATEGORICAL VARIABLES
+*******************************************************
+encode main_category, gen(main_category_encoded)
+encode country, gen(country_encoded)
+
+*******************************************************
+* BASELINE REGRESSION MODEL
+*******************************************************
+reg ln_monthly_revenue ln_monthly_downloads ln_active_users rank ///
+    i.country_encoded i.main_category_encoded i.shows_ads updates
+
+*******************************************************
+* MEAN COMPARISON BAR CHART
+*******************************************************
+graph bar (mean) ln_monthly_revenue, over(country) ///
+    bar(1, fcolor(dkgreen)) ///
+    title("Monthly Revenue by Country")
+
+*******************************************************
+* INTERACTION EFFECT: COUNTRY × ACTIVE USERS
+*******************************************************
+reg ln_monthly_revenue ln_monthly_downloads ln_active_users ///
+    c.ln_active_users##i.country_encoded rank ///
+    i.main_category_encoded updates shows_ads
+
+twoway ///
+    (scatter ln_monthly_revenue ln_active_users if country_encoded==1, mcolor(dkgreen%70)) ///
+    (lfit ln_monthly_revenue ln_active_users if country_encoded==1, lcolor(dkgreen)) ///
+    (scatter ln_monthly_revenue ln_active_users if country_encoded==2, mcolor(blue%70)) ///
+    (lfit ln_monthly_revenue ln_active_users if country_encoded==2, lcolor(blue)) ///
+    (scatter ln_monthly_revenue ln_active_users if country_encoded==3, mcolor(red%70)) ///
+    (lfit ln_monthly_revenue ln_active_users if country_encoded==3, lcolor(red)) ///
+    (scatter ln_monthly_revenue ln_active_users if country_encoded==4, mcolor(purple%70)) ///
+    (lfit ln_monthly_revenue ln_active_users if country_encoded==4, lcolor(purple)), ///
+    legend(label(1 "Germany (Data)") label(2 "Germany (Fit)") ///
+           label(3 "UK (Data)") label(4 "UK (Fit)") ///
+           label(5 "China (Data)") label(6 "China (Fit)") ///
+           label(7 "Japan (Data)") label(8 "Japan (Fit)")) ///
+    title("Ln(Monthly Revenue) vs ln(Active Users) by Country") ///
+    xtitle("ln(Active Users)") ytitle("ln(Monthly Revenue)")
+
+*******************************************************
+* RESIDUAL DIAGNOSTIC
+*******************************************************
+rvfplot, yline(0) mcolor(dkgreen) ///
+    title("Residuals vs Fitted Values")
+
+*******************************************************
+* ROBUSTNESS ANALYSIS
+*******************************************************
+reg ln_monthly_revenue ln_monthly_downloads ln_active_users country_encoded ///
+    rank i.main_category_encoded updates shows_ads, robust
+
+* Quadratic form of updates
+gen updates_sq = updates^2
+
+reg ln_monthly_revenue ln_monthly_downloads ln_active_users country_encoded ///
+    rank updates updates_sq i.main_category_encoded shows_ads
+
+twoway ///
+    (scatter ln_monthly_revenue updates, mcolor(dkgreen)) ///
+    (lfit ln_monthly_revenue updates, lcolor(red)) ///
+    (qfit ln_monthly_revenue updates_sq, lcolor(navy)), ///
+    title("Ln(Monthly Revenue) vs Updates / Updates²")
+
+*******************************************************
+* END OF FILE
+*******************************************************
