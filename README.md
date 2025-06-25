@@ -31,7 +31,7 @@ This project explores the determinants of app revenue using Stata and an app sto
 
 - 1% increase in active users leads to ~0.32% increase in revenue (log-log model)
 - Included robust standard errors and tested for heteroskedasticity
-- Addressed multicollinearity using VIF and GDP-per-capita adjustments
+- Investigated interaction effects between country and active user impact on revenue
 
 ## 📝 License
 
